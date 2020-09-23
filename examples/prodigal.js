@@ -12,7 +12,7 @@
 
 var metadata = { title: "The Prodigal Son", author: "Luke the Physician (traditionally attributed)", date: "1st or 2nd Century CE",
 instructions: "Click below or add your own parameters to the URL to change the “spin” and to create variation in the narrative discourse. You have to use the official names of “actors” for narrator and narratee, which can be found by looking at the code. Examples:",
-examples: [ "narrator=younger,narratee=father,speaking=after,event_numbers",
+examples: [ "narrator=swine,focalization=tight",
 "order=retrograde,time_markers" ] };
 
 // PLACES first
@@ -62,7 +62,7 @@ var ENTER_FIELD = new Event(actor.younger, "enter", place.citizens_field);
 var FEED_SWINE = new Event(actor.younger, "feed", actor.swine, temporal.using, thing.husks);
 var HUNGER = new Event(actor.younger, "hunger");
 var SAID_FIRST = new Event(actor.younger, "think", "“How many hired servants of my father's have bread enough and to spare, and I perish with hunger!”");
-var SAID_NEXT = new Event(actor.younger, "think", "“I will arise and go to my father, and will say unto him, Father, I have sinned against heaven, and before thee, and am no more worthy to be called thy son: make me as one of thy hired servants”");
+var SAID_NEXT = new Event(actor.younger, "think", actor.father, "“I will arise and go to my father, and will say unto him, Father, I have sinned against heaven, and before thee, and am no more worthy to be called thy son: make me as one of thy hired servants”");
 var TRAVEL_TO_FATHER = new Event(actor.younger, "travel", null, temporal.to, place.front);
 var SEE_YOUNGER_SON = new Event(actor.father, "see", actor.younger);
 var RUN_TO_YOUNGER_SON = new Event(actor.father, "run", null, temporal.to, actor.younger);

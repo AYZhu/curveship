@@ -295,9 +295,10 @@ class Event {
         } else if (typeof this[existent] === "string") {
           subjectNP = objectNP = this[existent];
         } else if (Array.isArray(this[existent])) { // Only 2 elements are supported for now!
-          // FIXME doesn't get pronouns in the right order: "You and I"
-          subjectNP = this[existent][0].getSubject(spin, this) + " and " + this[existent][1].getSubject(spin, this);
-          objectNP = this[existent][0].getObject(spin, this) + " and " + this[existent][1].getObject(spin, this);
+          var subjectNs = [this[existent][0].getSubject(spin, this), this[existent][1].getSubject(spin, this)]
+          subjectNP = subjectNs[0] === "I" ? subjectNs[1] + " and " + subjectNs[0] : subjectNs[0] + " and " + subjectNs[1];
+          var objectNs = [this[existent][0].getObject(spin, this), this[existent][1].getObject(spin, this)]
+          objectNP = objectNs[0] === "me" ? objectNs[0] + " and " + objectNs[1] : objectNs[1] + " and " + objectNs[0];
           possessivePhrase = this[existent][0].getSubject(spin, this) + " and " + this[existent][1].getPossessive(spin, this);
           givens.add(this[existent][0]);
           givens.add(this[existent][1]);
@@ -366,6 +367,37 @@ function narrate(metadata, spin, world) {
   element.appendChild(div);
   for (var i of telling) {
     event = world.event[i];
+    var sentenceItems = []
+    sentenceItems = sentenceItems.concat(event["agent"]);
+    sentenceItems = sentenceItems.concat(event["object"]);
+    sentenceItems = sentenceItems.concat(event["extra"]);
+    console.log(event["action"]);
+    if (spin.focalization === "external"){
+      if (internalWords.includes(event["action"])){
+        if(spin.narrator){
+          if(Array.isArray(event["agent"]) && !event["agent"].includes(spin.narrator)) {
+            continue;
+          } else if(event["agent"] !== spin.narrator) {
+            continue;
+          }
+        } else {
+          continue;
+        }
+      }
+    }
+    if (spin.focalization === "tight" && spin.narrator){
+      if (!sentenceItems.includes(spin.narrator) && !sentenceItems.includes(actor.cosmos)) {
+        continue;
+      }
+      console.log(event["action"]);
+      if (internalWords.includes(event["action"])){
+        if(Array.isArray(event["agent"]) && !event["agent"].includes(spin.narrator)) {
+          continue;
+        } else if(event["agent"] !== spin.narrator) {
+          continue;
+        }
+      }
+    }
     div = document.createElement("div");
     sentence = "";
     if (spin.expression_numbers) {
