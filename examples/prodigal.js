@@ -12,8 +12,7 @@
 
 var metadata = { title: "The Prodigal Son", author: "Luke the Physician (traditionally attributed)", date: "1st or 2nd Century CE",
 instructions: "Click below or add your own parameters to the URL to change the “spin” and to create variation in the narrative discourse. You have to use the official names of “actors” for narrator and narratee, which can be found by looking at the code. Examples:",
-examples: [ "narrator=swine,focalization=tight",
-"order=retrograde,time_markers" ] };
+examples: [ "narrator=swine,focalizer=swine,focalization=tight" ] };
 
 // PLACES first
 place.house = new Place("a", "large house");

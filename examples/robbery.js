@@ -11,9 +11,11 @@
 
 var metadata = { title: "The Simulated Bank Robbery", author: "Nick Montfort", date: "2007",
 instructions: "Click below or add your own parameters to the URL to change the “spin” and to create variation in the narrative discourse. You have to use the official names of “actors” for narrator and narratee, which can be found by looking at the code. Examples:",
-examples: [ "narrator=teller",
-"order=retrograde,narratee=robber,narrator=guard,event_numbers",
-"speaking=after,narrator=teller,order=random,event_numbers,expression_numbers" ] };
+examples: [
+    "narrator=teller,focalizer=robber",
+    "narrator=robber,focalizer=vestibule,location_markers",
+    "order=retrograde,narratee=robber,narrator=guard,focalizer=guard,focalization=visible,location_markers",
+] };
 
 // PLACES first
 place.vestibule = new Place("the", "vestibule");
@@ -28,7 +30,7 @@ place.guardPost.addView(place.lobby, "through the one-way mirror");
 // ACTORS next
 actor.teller = new Actor("a", "bank teller", spatial.in, place.vestibule, pronoun.feminine);
 actor.robber = new Actor("a", "twitchy man", spatial.in, place.street, pronoun.masculine);
-actor.guard = new Actor("a", "burly guard", spatial.in, place.guard_post, pronoun.masculine);
+actor.guard = new Actor("a", "burly guard", spatial.in, place.guardPost, pronoun.masculine);
 
 // THINGS next
 thing.slip = new Thing("a", "deposit slip", spatial.in, place.vestibule);

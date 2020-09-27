@@ -45,6 +45,7 @@ class Existent {
     if (new.target === Existent) { throw new TypeError("Can't directly instantiate Existent"); }
     if (article) { this.article = article; }
     this.name = name;
+    this.relations = {};
   }
   getNounPhrase(role, spin, ev) {
   // If person and number have non-null values, and spin applies, returns a pronoun
@@ -95,6 +96,26 @@ class Existent {
   configuredAs(spatialRelation, parent) {
     this.spatial = spatialRelation;
     this.parent = parent;
+  }
+  getSpatialRoot(time) { 
+    // if the existent ever changes location, get its location at the event start time
+    var item;
+    var maxTime = -Infinity;
+    for(var changeTime in this.relations){
+      if(changeTime < time && changeTime > maxTime){
+        maxTime = changeTime;
+      }
+    }
+    if(maxTime !== -Infinity){
+      item = this.relations[maxTime][1];
+    } else {
+      item = this;
+    }
+    // keep going up the hiearchy until we find a Place (that is not, in fact, the cosmos)
+    while(item.parent && item.parent !== actor.cosmos){
+      item = item.parent;
+    }
+    return item;
   }
   setNumberBasedOnArticle() {
     if (this.article === "") {
@@ -160,7 +181,7 @@ var actor = { cosmos: new Actor(null, "it") };
 class Place extends Existent {
   constructor(article, name) {
     super(article, name);
-    this.visiblePlaces = {};
+    this.visiblePlaces = [];
     this.configuredAs(spatial.of, actor.cosmos);
     this.pronoun = pronoun.neuter;
     this.setNumberBasedOnArticle();
@@ -168,7 +189,7 @@ class Place extends Existent {
   addView(place, text, visibility = 1) { // "visibility" does nothing now.
   // It is used in Curveship.py, which has a complex model of what things
   // can be seen from what places. There, 1 means things are fully visible.
-    this.visiblePlaces[place] = { text: text, visibility: visibility };
+    this.visiblePlaces.push({ place: place, text: text, visibility: visibility });
   }
 }
 
@@ -276,10 +297,10 @@ class Event {
     return ((this.agent === actor) || (this.object === actor) || (this.extra === actor));
   }
   changeState(ex, spatial_1, parent_1, spatial_2, parent_2) {
-    // Does nothing now. Will later be used for minimal world simulation, so
-    // that focalization can be implemented.
+    // mark that the object moves positions at this time
+    ex.relations[this.start] = [spatial_2, parent_2];
   }
-  realize(spin, fix = true) {
+  realize(spin, view = true, fix = true) {
     var currentTemplate = this.template, subjectExp, objectExp,
       possessiveExp, subjectNP, objectNP, possessivePhrase = "", oldSpeaking;
     // Realize the verb phrase ...
@@ -316,6 +337,8 @@ class Event {
       currentTemplate = currentTemplate.replace(objectExp, objectNP);
       currentTemplate = currentTemplate.replace(possessiveExp, possessivePhrase);
     }
+    // if a view was provided, add it to the sentence
+    if(view !== true) { currentTemplate += " " + view; }
     if (fix) { currentTemplate = this.fixOrthography(currentTemplate); }
     return currentTemplate;
   }
@@ -329,6 +352,48 @@ class World {
     this.actor = actors;
     this.item = items;
     this.event = eventSequence;
+  }
+}
+
+
+// used for focalization; note that tight focalization is default w/ character, but visible is default w/ location
+function eventView(event, spin, sentenceItems) {
+  // no focalization
+  if (spin.focalization == "zero" || !spin.focalizer){
+    return true;
+  }
+
+  // focalization on "visible" objects to the location of the focalizer
+  if (spin.focalization == "visible" || spin.focalizer instanceof Place) {
+    var focalizerPlace = spin.focalizer.getSpatialRoot(event.start)
+    var visiblePlaces = [ focalizerPlace ]
+
+    // gets all visible items
+    focalizerPlace.visiblePlaces.forEach(location => {
+      visiblePlaces.push(location.place);
+    });
+    var agents = [].concat(event["agent"]);
+
+    // if none of the agents of the event are visible, then drop the event
+    var agentPlaces = agents.map((item) => (item ? item.getSpatialRoot(event.start) : undefined));
+    var intersection = agentPlaces.filter(x => visiblePlaces.includes(x))
+    if (intersection.length == 0){
+      return false;
+    }
+
+    // otherwise, we should tell us how we saw it if we have location markers
+    if(!intersection.includes(focalizerPlace) && spin.location_markers){
+      return focalizerPlace.visiblePlaces.filter(x => intersection.includes(x.place))[0].text;
+    }
+    return true;
+  }
+
+  // if tight focalization, then only include events the actor is active in
+  if (spin.focalizer){
+    if (!sentenceItems.includes(spin.focalizer) && !sentenceItems.includes(actor.cosmos)) {
+      return false;
+    }
+    return true;
   }
 }
 
@@ -371,32 +436,9 @@ function narrate(metadata, spin, world) {
     sentenceItems = sentenceItems.concat(event["agent"]);
     sentenceItems = sentenceItems.concat(event["object"]);
     sentenceItems = sentenceItems.concat(event["extra"]);
-    console.log(event["action"]);
-    if (spin.focalization === "external"){
-      if (internalWords.includes(event["action"])){
-        if(spin.narrator){
-          if(Array.isArray(event["agent"]) && !event["agent"].includes(spin.narrator)) {
-            continue;
-          } else if(event["agent"] !== spin.narrator) {
-            continue;
-          }
-        } else {
-          continue;
-        }
-      }
-    }
-    if (spin.focalization === "tight" && spin.narrator){
-      if (!sentenceItems.includes(spin.narrator) && !sentenceItems.includes(actor.cosmos)) {
-        continue;
-      }
-      console.log(event["action"]);
-      if (internalWords.includes(event["action"])){
-        if(Array.isArray(event["agent"]) && !event["agent"].includes(spin.narrator)) {
-          continue;
-        } else if(event["agent"] !== spin.narrator) {
-          continue;
-        }
-      }
+    var view = eventView(event, spin, sentenceItems);
+    if (!view){
+      continue;
     }
     div = document.createElement("div");
     sentence = "";
@@ -422,12 +464,12 @@ function narrate(metadata, spin, world) {
       }
       if (spin.speaking === "during") { spin.speaking = "after"; }
       if (spin.speaking === "before") { spin.speaking = "during"; }
-      sentence += event.realize(spin, fix);
+      sentence += event.realize(spin, view, fix);
       if (!fix) { sentence += event.realize(spin).slice(-1); }
       spin.speaking = oldSpeaking;
       spin.referring = oldReferring;
     } else {
-      sentence += event.realize(spin);
+      sentence += event.realize(spin, view);
     }
     div.innerHTML = sentence;
     element.appendChild(div);
@@ -493,9 +535,11 @@ function getParameters(actor) {
     for (var p of params) {
       pair = p.split("=");
       if (pair[0] === "narrator" || pair[0] === "narratee") { spin[pair[0]] = actor[pair[1]]; }
+      else if (pair[0] === "focalizer") { spin[pair[0]] = (actor[pair[1]] || place[pair[1]]); }
       else if (pair[0] === "time_markers") { spin.time_markers = true; }
       else if (pair[0] === "event_numbers") { spin.event_numbers = true; }
       else if (pair[0] === "expression_numbers") { spin.expression_numbers = true; }
+      else if (pair[0] === "location_markers") { spin.location_markers = true; }
       else { spin[pair[0]] = pair[1]; }
     }
   }

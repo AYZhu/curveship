@@ -90,7 +90,6 @@ class Verb {
 }
 
 // A convenience, so people can, e.g., put "is" in their templates
-const internalWords = ["think"];
 
 const be = ["be", "am", "are", "is"];
 
